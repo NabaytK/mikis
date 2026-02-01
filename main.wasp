@@ -1,0 +1,123 @@
+app BeshGebeyaTracker {
+  wasp: {
+    version: "^0.15.0"
+  },
+  title: "BeshGebeya Tracker",
+  
+  client: {
+    rootComponent: import { Layout } from "@src/Layout"
+  },
+
+  auth: {
+    userEntity: User,
+    methods: {
+      usernameAndPassword: {
+        userSignupFields: import { getUserFields } from "@src/auth/signup"
+      }
+    },
+    onAuthFailedRedirectTo: "/login",
+    onAuthSucceededRedirectTo: "/"
+  },
+
+  db: {
+    system: SQLite
+  }
+}
+
+// Authentication routes
+route LoginRoute { path: "/login", to: LoginPage }
+page LoginPage {
+  component: import Login from "@src/pages/auth/Login"
+}
+
+route SignupRoute { path: "/signup", to: SignupPage }
+page SignupPage {
+  component: import Signup from "@src/pages/auth/Signup"
+}
+
+// Main app routes
+route DashboardRoute { path: "/", to: DashboardPage }
+page DashboardPage {
+  component: import Dashboard from "@src/pages/Dashboard",
+  authRequired: true
+}
+
+route InventoryRoute { path: "/inventory", to: InventoryPage }
+page InventoryPage {
+  component: import Inventory from "@src/pages/Inventory",
+  authRequired: true
+}
+
+route ProductsRoute { path: "/products", to: ProductsPage }
+page ProductsPage {
+  component: import Products from "@src/pages/Products",
+  authRequired: true
+}
+
+route SalesRoute { path: "/sales", to: SalesPage }
+page SalesPage {
+  component: import Sales from "@src/pages/Sales",
+  authRequired: true
+}
+
+// Queries
+query getUser {
+  fn: import { getUser } from "@src/queries",
+  entities: [User]
+}
+
+query getInventory {
+  fn: import { getInventory } from "@src/queries",
+  entities: [Inventory, Product, Branch]
+}
+
+query getProducts {
+  fn: import { getProducts } from "@src/queries",
+  entities: [Product]
+}
+
+query getProduct {
+  fn: import { getProduct } from "@src/queries",
+  entities: [Product, Inventory]
+}
+
+query getSales {
+  fn: import { getSales } from "@src/queries",
+  entities: [Sale, SaleItem, Product, User, Branch]
+}
+
+query getSalesReport {
+  fn: import { getSalesReport } from "@src/queries",
+  entities: [Sale, SaleItem, Product]
+}
+
+query getAlerts {
+  fn: import { getAlerts } from "@src/queries",
+  entities: [Alert]
+}
+
+// Actions
+action createProduct {
+  fn: import { createProduct } from "@src/actions",
+  entities: [Product]
+}
+
+action updateInventory {
+  fn: import { updateInventory } from "@src/actions",
+  entities: [Inventory, Product, Branch]
+}
+
+action createSale {
+  fn: import { createSale } from "@src/actions",
+  entities: [Sale, SaleItem, Inventory, Product]
+}
+
+action generateLowStockAlerts {
+  fn: import { generateLowStockAlerts } from "@src/actions",
+  entities: [Inventory, Product, Alert]
+}
+
+action markAlertAsRead {
+  fn: import { markAlertAsRead } from "@src/actions",
+  entities: [Alert]
+}

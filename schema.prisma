@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum InventoryStatus {
+  AVAILABLE
+  EXPIRED
+  DISCONTINUED
+  LOW_STOCK
+}
+
+enum AlertType {
+  LOW_STOCK
+  NEAR_EXPIRY
+  EXPIRED
+}
+
+// Auth models (required by Wasp)
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String?  @unique
+  name      String?
+  email     String?
+  branchId  Int?
+  createdAt DateTime @default(now())
+  
+  branch    Branch?  @relation(fields: [branchId], references: [id])
+  sales     Sale[]
+}
+
+model Auth {
+  id         String     @id @default(uuid())
+  userId     Int?       @unique
+  identities Identity[]
+}
+
+model Identity {
+  providerName   String
+  providerUserId String
+  providerData   String @default("{}")
+  authId         String
+  auth           Auth   @relation(fields: [authId], references: [id], onDelete: Cascade)
+
+  @@id([providerName, providerUserId])
+}
+
+// Business models
+model Branch {
+  id        Int         @id @default(autoincrement())
+  name      String
+  location  String
+  phone     String
+  createdAt DateTime    @default(now())
+  
+  users     User[]
+  inventory Inventory[]
+  sales     Sale[]
+}
+
+model Product {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String
+  barcode     String?    @unique
+  sku         String     @unique
+  category    String
+  brand       String?
+  unitPrice   Float
+  costPrice   Float
+  supplier    String?
+  createdAt   DateTime   @default(now())
+  
+  inventory   Inventory[]
+  saleItems   SaleItem[]
+}
+
+model Inventory {
+  id             Int             @id @default(autoincrement())
+  productId      Int
+  branchId       Int
+  quantityOnHand Int
+  thresholdMin   Int             @default(10)
+  expiryDate     DateTime?
+  batchNumber    String?
+  status         InventoryStatus @default(AVAILABLE)
+  lastUpdated    DateTime        @updatedAt
+  createdAt      DateTime        @default(now())
+  
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  branch  Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  
+  @@unique([productId, branchId, batchNumber])
+}
+
+model Sale {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  branchId    Int
+  totalAmount Float
+  paymentType String
+  saleDate    DateTime @default(now())
+  
+  user   User       @relation(fields: [userId], references: [id])
+  branch Branch     @relation(fields: [branchId], references: [id])
+  items  SaleItem[]
+}
+
+model SaleItem {
+  id        Int   @id @default(autoincrement())
+  saleId    Int
+  productId Int
+  quantity  Int
+  price     Float
+  
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Alert {
+  id        Int       @id @default(autoincrement())
+  type      AlertType
+  message   String
+  productId Int?
+  branchId  Int?
+  isRead    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+}
