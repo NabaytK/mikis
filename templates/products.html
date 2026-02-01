@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Products - BeshGebeya{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🥬 Products</h1>
+    <button onclick="toggleForm()" class="btn-primary">+ Add Product</button>
+</div>
+
+<div id="product-form" class="form-container" style="display:none;">
+    <h2>Add New Product</h2>
+    <form method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Product Name (English) *</label>
+                <input type="text" name="name" required placeholder="e.g., Tomato">
+            </div>
+            <div class="form-group">
+                <label>Local Name (Amharic)</label>
+                <input type="text" name="local_name" placeholder="e.g., ቲማቲም">
+            </div>
+            <div class="form-group">
+                <label>SKU *</label>
+                <input type="text" name="sku" required placeholder="e.g., VEG-001">
+            </div>
+            <div class="form-group">
+                <label>Local Code</label>
+                <input type="text" name="local_code" placeholder="e.g., LC-001">
+                <small>Internal tracking code</small>
+            </div>
+            <div class="form-group">
+                <label>Barcode</label>
+                <input type="text" name="barcode" placeholder="e.g., 123456789012">
+            </div>
+            <div class="form-group">
+                <label>Category *</label>
+                <input type="text" name="category" placeholder="e.g., Vegetables, Fruits" required>
+            </div>
+            <div class="form-group">
+                <label>Brand</label>
+                <input type="text" name="brand" placeholder="Optional">
+            </div>
+            <div class="form-group">
+                <label>Supplier</label>
+                <input type="text" name="supplier" placeholder="Supplier name">
+            </div>
+            <div class="form-group">
+                <label>Cost Price (ETB) *</label>
+                <input type="number" step="0.01" name="cost_price" required>
+            </div>
+            <div class="form-group">
+                <label>Unit Price (ETB) *</label>
+                <input type="number" step="0.01" name="unit_price" required>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Description</label>
+            <textarea name="description" rows="3" placeholder="Product description..."></textarea>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Create Product</button>
+            <button type="button" onclick="toggleForm()" class="btn-secondary">Cancel</button>
+        </div>
+    </form>
+</div>
+
+<div class="section">
+    {% if products %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Local Name</th>
+                    <th>SKU</th>
+                    <th>Local Code</th>
+                    <th>Barcode</th>
+                    <th>Category</th>
+                    <th>Cost Price</th>
+                    <th>Unit Price</th>
+                    <th>Profit Margin</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td><strong>{{ product.name }}</strong></td>
+                    <td>{{ product.local_name or '-' }}</td>
+                    <td><code>{{ product.sku }}</code></td>
+                    <td><code>{{ product.local_code or '-' }}</code></td>
+                    <td><code>{{ product.barcode or '-' }}</code></td>
+                    <td>{{ product.category }}</td>
+                    <td>{{ "{:,.2f}".format(product.cost_price) }} ETB</td>
+                    <td>{{ "{:,.2f}".format(product.unit_price) }} ETB</td>
+                    <td>
+                        <span class="badge badge-success">
+                            {{ "{:.1f}".format(((product.unit_price - product.cost_price) / product.cost_price * 100)) }}%
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="empty-state">No products yet. Add your first product!</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleForm() {
+    var form = document.getElementById('product-form');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+</script>
+{% endblock %}

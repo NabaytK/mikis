@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory - BeshGebeya{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📦 Inventory Management</h1>
+    <div class="header-actions">
+        <button onclick="toggleScan()" class="btn-secondary">🔍 Scan Barcode</button>
+        <button onclick="toggleForm()" class="btn-primary">+ Add/Update Stock</button>
+    </div>
+</div>
+
+<!-- Barcode Scanner -->
+<div id="barcode-scanner" class="form-container" style="display:none;">
+    <h2>🔍 Scan Barcode or Enter Code</h2>
+    <div class="scanner-box">
+        <input type="text" id="scan-input" placeholder="Scan barcode or type local code..." 
+               autofocus onkeypress="handleScan(event)">
+        <button onclick="searchProduct()" class="btn-primary">Search</button>
+    </div>
+    <div id="scan-result"></div>
+</div>
+
+<div id="inventory-form" class="form-container" style="display:none;">
+    <h2>Add/Update Inventory</h2>
+    <form method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Product *</label>
+                <select name="product_id" id="product_id" required>
+                    <option value="">Select product</option>
+                    {% for product in products %}
+                    <option value="{{ product.id }}" 
+                            {% if selected_product_id and product.id == selected_product_id|int %}selected{% endif %}>
+                        {{ product.name }} 
+                        {% if product.local_name %}({{ product.local_name }}){% endif %}
+                        - {{ product.local_code or product.sku }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Quantity *</label>
+                <input type="number" name="quantity_on_hand" min="0" required>
+            </div>
+            <div class="form-group">
+                <label>Minimum Threshold *</label>
+                <input type="number" name="threshold_min" value="10" min="0" required>
+            </div>
+            <div class="form-group">
+                <label>Entry Date</label>
+                <input type="date" name="entry_date" value="{{ now.strftime('%Y-%m-%d') }}" readonly>
+                <small>Stock entry date (auto-filled)</small>
+            </div>
+            <div class="form-group">
+                <label>Expiry Date *</label>
+                <input type="date" name="expiry_date" required>
+            </div>
+            <div class="form-group">
+                <label>Batch Number</label>
+                <input type="text" name="batch_number" placeholder="e.g., BATCH-2024-001">
+            </div>
+            <div class="form-group">
+                <label>Status *</label>
+                <select name="status">
+                    <option value="AVAILABLE">Available</option>
+                    <option value="LOW_STOCK">Low Stock</option>
+                    <option value="EXPIRED">Expired</option>
+                    <option value="DISCONTINUED">Discontinued</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Update Inventory</button>
+            <button type="button" onclick="toggleForm()" class="btn-secondary">Cancel</button>
+        </div>
+    </form>
+</div>
+
+<div class="section">
+    <div class="inventory-info">
+        <h3>📊 Inventory sorted by expiry date (Expiring first)</h3>
+        <p class="info-text">⚠️ Products expiring soon are shown at the top</p>
+    </div>
+    
+    {% if inventory %}
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Product Name</th>
+                        <th>Local Name</th>
+                        <th>Local Code</th>
+                        <th>Barcode</th>
+                        <th>Quantity</th>
+                        <th>Entry Date</th>
+                        <th>Expiry Date</th>
+                        <th>Days Left</th>
+                        <th>Batch</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in inventory %}
+                    {% set days_left = (item.expiry_date - now).days if item.expiry_date else None %}
+                    <tr class="{% if days_left and days_left < 0 %}row-expired{% elif days_left and days_left <= 7 %}row-expiring{% elif item.quantity_on_hand <= item.threshold_min %}row-warning{% endif %}">
+                        <td><strong>{{ item.product.name }}</strong></td>
+                        <td>{{ item.product.local_name or '-' }}</td>
+                        <td><code>{{ item.product.local_code or '-' }}</code></td>
+                        <td><code>{{ item.product.barcode or '-' }}</code></td>
+                        <td>
+                            <strong class="{% if item.quantity_on_hand <= item.threshold_min %}text-danger{% endif %}">
+                                {{ item.quantity_on_hand }}
+                            </strong>
+                        </td>
+                        <td>{{ item.entry_date.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            {% if item.expiry_date %}
+                                {{ item.expiry_date.strftime('%Y-%m-%d') }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if days_left is not none %}
+                                {% if days_left < 0 %}
+                                    <span class="badge badge-expired">EXPIRED {{ -days_left }} days ago</span>
+                                {% elif days_left == 0 %}
+                                    <span class="badge badge-expired">EXPIRES TODAY!</span>
+                                {% elif days_left <= 3 %}
+                                    <span class="badge badge-critical">{{ days_left }} days</span>
+                                {% elif days_left <= 7 %}
+                                    <span class="badge badge-warning">{{ days_left }} days</span>
+                                {% else %}
+                                    <span class="badge badge-safe">{{ days_left }} days</span>
+                                {% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td><code>{{ item.batch_number or '-' }}</code></td>
+                        <td>
+                            <span class="badge badge-{{ item.status|lower }}">{{ item.status }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="empty-state">No inventory records. Add stock to your products!</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleForm() {
+    var form = document.getElementById('inventory-form');
+    var scanner = document.getElementById('barcode-scanner');
+    scanner.style.display = 'none';
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleScan() {
+    var form = document.getElementById('inventory-form');
+    var scanner = document.getElementById('barcode-scanner');
+    form.style.display = 'none';
+    scanner.style.display = scanner.style.display === 'none' ? 'block' : 'none';
+    if (scanner.style.display === 'block') {
+        document.getElementById('scan-input').focus();
+    }
+}
+
+function handleScan(event) {
+    if (event.key === 'Enter') {
+        searchProduct();
+    }
+}
+
+function searchProduct() {
+    var code = document.getElementById('scan-input').value.trim();
+    if (!code) return;
+    
+    fetch('{{ url_for("search_product") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({code: code})
+    })
+    .then(response => response.json())
+    .then(data => {
+        var resultDiv = document.getElementById('scan-result');
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="scan-success">
+                    <h3>✅ Product Found!</h3>
+                    <p><strong>${data.product.name}</strong> ${data.product.local_name ? '(' + data.product.local_name + ')' : ''}</p>
+                    <p>Price: ${data.product.unit_price} ETB</p>
+                    <p>Current Stock: ${data.product.stock} units</p>
+                    <button onclick="addToInventory(${data.product.id})" class="btn-primary">Add Stock</button>
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="scan-error">
+                    <h3>❌ Product Not Found</h3>
+                    <p>No product found with code: ${code}</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+function addToInventory(productId) {
+    window.location.href = '{{ url_for("inventory") }}?product_id=' + productId;
+    toggleForm();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - BeshGebeya{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🏪 Dashboard</h1>
+    <div class="header-actions">
+        {% if session.is_admin %}
+        <a href="{{ url_for('admin_panel') }}" class="btn-secondary">👨‍💼 Admin Panel</a>
+        {% endif %}
+        <a href="{{ url_for('generate_alerts') }}" class="btn-primary">🔔 Generate Alerts</a>
+    </div>
+</div>
+
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-icon">💰</div>
+        <div class="metric-content">
+            <h3>Total Sales (7 days)</h3>
+            <p class="metric-value">{{ "{:,.2f}".format(total_sales) }} ETB</p>
+        </div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-icon">🛒</div>
+        <div class="metric-content">
+            <h3>Number of Sales</h3>
+            <p class="metric-value">{{ total_count }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="section">
+    <h2>⚠️ Products Expiring Soon (Next 7 Days)</h2>
+    {% if expiring_soon %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                    <th>Expiry Date</th>
+                    <th>Days Left</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in expiring_soon %}
+                {% set days_left = (item.expiry_date - now).days %}
+                <tr class="{% if days_left <= 3 %}row-expired{% else %}row-expiring{% endif %}">
+                    <td><strong>{{ item.product.name }}</strong></td>
+                    <td>{{ item.quantity_on_hand }} units</td>
+                    <td>{{ item.expiry_date.strftime('%Y-%m-%d') }}</td>
+                    <td>
+                        {% if days_left <= 3 %}
+                            <span class="badge badge-critical">{{ days_left }} days!</span>
+                        {% else %}
+                            <span class="badge badge-warning">{{ days_left }} days</span>
+                        {% endif %}
+                    </td>
+                    <td><span class="badge badge-{{ item.status|lower }}">{{ item.status }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="empty-state">No products expiring in the next 7 days</p>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>🔔 Active Alerts</h2>
+    {% if alerts %}
+        <div class="alerts-list">
+            {% for alert in alerts %}
+                <div class="alert-item alert-{{ alert.type|lower }}">
+                    <span class="alert-icon">
+                        {% if alert.type == 'LOW_STOCK' %}⚠️
+                        {% elif alert.type == 'NEAR_EXPIRY' %}⏰
+                        {% else %}🚫{% endif %}
+                    </span>
+                    <div class="alert-content">
+                        <p>{{ alert.message }}</p>
+                        <small>{{ alert.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="empty-state">No active alerts</p>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>📊 Top Selling Products</h2>
+    {% if top_products %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Quantity Sold</th>
+                    <th>Revenue</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in top_products %}
+                <tr>
+                    <td>{{ product.name }}</td>
+                    <td>{{ product.quantity }} units</td>
+                    <td>{{ "{:,.2f}".format(product.revenue) }} ETB</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="empty-state">No sales data available</p>
+    {% endif %}
+</div>
+{% endblock %}
